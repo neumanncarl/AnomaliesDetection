@@ -40,8 +40,12 @@ public class EquipmentEvent {
         return eiEventType;
     }
 
-    public String getEquiptment() {
+    public String getEquipment() {
         return equipment;
+    }
+
+    public String getEquipmentState() {
+        return equipmentState;
     }
 
     @Override

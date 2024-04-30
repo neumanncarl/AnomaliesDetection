@@ -12,36 +12,55 @@ import java.util.Map;
 import static myapps.AnomaliesDetection.parseLogMessage;
 import static myapps.AnomaliesDetection.parseToEquipment;
 
-public class AnomalyDetectionTransformer implements Transformer<String, String, KeyValue<String, JobSequenceInfo>> {
-    //private LocalDateTime startT;
-    private final Map<String, JobSequenceInfo> jobSequenceInfoStore = new HashMap<>();
-    private final Map<String, RuntimeStats> runtimeStatsStore = new HashMap<>();
+public class AnomalyDetectionTransformer implements Transformer<String, String, KeyValue<String, Job>> {
+    private final Map<String, RuntimeStats> statsStore = new HashMap<>();
+    private final Map<String, Job> jobStore = new HashMap<>();
+
+    private LocalDateTime startT;
 
     @Override
     public void init(ProcessorContext context) {
-
+        startT = LocalDateTime.now();
     }
 
     @Override
-    public KeyValue<String, JobSequenceInfo> transform(String key, String value) {
-        //if (startT == null) startT = java.time.LocalDateTime.now();
+    public KeyValue<String, Job> transform(String key, String value) {
+       // if (startT == null) startT = java.time.LocalDateTime.now();
         EquipmentEvent event = deserializeEvent(value);
+
+       // if (event.getJobReference().equals("2555113")) System.out.println("Runtime: " + ChronoUnit.MILLIS.between(java.time.LocalDateTime.now(), startT));
+       // if (event.getJobReference().equals("525")) System.out.println(event);
         System.out.println(event);
-        //if (event.getJobReference().equals("440")) System.out.println("Runtime: " + ChronoUnit.MILLIS.between(java.time.LocalDateTime.now(), startT));
-
-        JobSequenceInfo jobSequenceInfo = jobSequenceInfoStore.get(event.getJobReference());
-        if (jobSequenceInfo == null) jobSequenceInfo = new JobSequenceInfo(event.getJobReference(), event.getEquipmentType(), event.getEquiptment());
-
         String statsKey = event.getEquipmentType() + "-" + event.getEquipmentToolRecipe();
         if (event.getEiEventType().equals("JobCompleted")) statsKey += "-job";
         if (event.getEiEventType().equals("WaferCompleted")) statsKey += "-wafer";
-        RuntimeStats runtimeStats = runtimeStatsStore.get(statsKey);
-        if (runtimeStats == null) runtimeStats = new RuntimeStats();
+        RuntimeStats stats = statsStore.get(statsKey);
+        if (stats == null) stats = new RuntimeStats();
 
-        jobSequenceInfo.updateFromEvent(event, runtimeStats, runtimeStatsStore, statsKey);
-        jobSequenceInfoStore.put(event.getJobReference(), jobSequenceInfo);
+        String equipmentId = event.getEquipment();
 
-        return KeyValue.pair(event.getJobReference(), jobSequenceInfo);
+        Job job;
+        if (event.getEiEventType().equals("MaterialPlaced")) {
+            // Start a new job
+            job = new Job(event);
+            jobStore.put(equipmentId, job);
+        } else if (event.getEiEventType().equals("MaterialRemoved")) {
+            // End and remove the job
+            job = jobStore.get(equipmentId);
+            if (job != null) {
+                job.update(event, stats, statsStore, statsKey);
+            }
+            jobStore.remove(equipmentId);
+        } else {
+            // Associate event with existing job
+            job = jobStore.get(equipmentId);
+            if (job != null) {
+                job.update(event, stats, statsStore, statsKey);
+                jobStore.put(equipmentId, job); // Update the job with the new event
+            }
+        }
+
+        return KeyValue.pair(event.getJobReference(), job);
     }
 
     @Override

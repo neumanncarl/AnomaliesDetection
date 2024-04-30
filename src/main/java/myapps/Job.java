@@ -4,18 +4,15 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
-public class JobSequenceInfo {
+public class Job {
 
     // Every event related to one job
     private final ArrayList<EquipmentEvent> events = new ArrayList();
-
-    // Keys
-    private final String jobReference;
-    private final String equipmentType;
     private final String equipment;
+    private final String equipmentType;
+    private final String jobRef;
 
     // Job status
-    private boolean materialPlaced = false;
     private boolean jobStarted = false;
     private boolean waferStarted = false;
     private boolean waferCompleted = false;
@@ -27,21 +24,20 @@ public class JobSequenceInfo {
 
     private final Map<String, Integer> eventTypeCounts = new HashMap<>();
 
-    private boolean jobRuntimeAnomaly = false;
-    private boolean waferRuntimeAnomaly = false;
-    private boolean sequenceAnomaly = false;
-    private int eventDeletion;
-    private int eventDuplication;
+    private int jobRuntimeAnomaly = 0;
+    private int waferRuntimeAnomaly = 0;
 
-    public JobSequenceInfo(String reference, String equipmentType, String equipment) {
-        this.jobReference = reference;
-        this.equipmentType = equipmentType;
-        this.equipment = equipment;
-
+    public Job(EquipmentEvent event) {
+        this.jobRef = event.getJobReference();
+        this.equipment = event.getEquipment();
+        this.equipmentType = event.getEquipmentType();
+        events.add(event);
+        this.eventTypeCounts.merge(event.getEiEventType(), 1, Integer::sum);
     }
 
-    public void updateFromEvent(EquipmentEvent event, RuntimeStats runtimeStats, Map<String, RuntimeStats> runtimeStatsStore, String statsKey) {
-        if (events.contains(event)) return; // Reject event if it's a duplicate (event is no anomaly but a system error)
+    public void update(EquipmentEvent event, RuntimeStats runtimeStats, Map<String, RuntimeStats> runtimeStatsStore, String statsKey) {
+        System.out.println(events);
+        if (events.getLast().getTimestamp().equals(event.getTimestamp())) return; // Reject event if it's a duplicate (event is no anomaly but a system error)
         this.events.add(event);
 
         // Handle event based on its type
@@ -54,42 +50,30 @@ public class JobSequenceInfo {
             case "WaferCompleted":
                 waferCompleted = true;
                 if (waferStarts.isEmpty()) {
-                    sequenceAnomaly = true;
                     break;
                 }
-                runtime = ChronoUnit.SECONDS.between(waferStarts.removeFirst(), event.getTimestamp());
+                runtime = ChronoUnit.SECONDS.between(waferStarts.getFirst(), event.getTimestamp());
+                waferStarts.removeFirst();
                 runtimeStats.update(runtime);
                 runtimeStatsStore.put(statsKey, runtimeStats);
-                waferRuntimeAnomaly = runtimeStats.isWithinBounds(runtime);
+                if (runtimeStats.isWithinBounds(runtime) && !event.getEquipmentState().equals("UnscheduledDowntimeDefault")) {
+                    waferRuntimeAnomaly++;
+                }
                 break;
             case "JobStarted":
-                if (!materialPlaced) {
-                    sequenceAnomaly = true;
-                }
                 jobStarted = true;
                 jobStart = event.getTimestamp();
                 break;
             case "JobCompleted":
-                if (!materialPlaced || !jobStarted) {
-                    sequenceAnomaly = true;
-                }
                 jobCompleted = true;
-                if (jobStart == null) {
-                    sequenceAnomaly = true;
-                    break;
-                }
                 runtime = ChronoUnit.SECONDS.between(jobStart, event.getTimestamp());
                 runtimeStats.update(runtime);
                 runtimeStatsStore.put(statsKey, runtimeStats);
-                jobRuntimeAnomaly = runtimeStats.isWithinBounds(runtime);
-                break;
-            case "MaterialPlaced":
-                materialPlaced = true;
+                if (runtimeStats.isWithinBounds(runtime)) {
+                    jobRuntimeAnomaly++;
+                }
                 break;
             case "MaterialRemoved":
-                if (!materialPlaced || !jobStarted || !jobCompleted) {
-                    sequenceAnomaly = true;
-                }
                 materialRemoved = true;
                 break;
         }
@@ -97,11 +81,12 @@ public class JobSequenceInfo {
         this.eventTypeCounts.merge(event.getEiEventType(), 1, Integer::sum);
     }
 
-    // Check every event for anomaly
     public boolean hasAnomaly() {
-        if (materialPlaced && jobStarted && waferStarted && waferCompleted && !jobCompleted) return waferRuntimeAnomaly;
-        if (materialPlaced && jobStarted && jobCompleted) return jobRuntimeAnomaly;
-        if (materialRemoved) return isSequenceAnomaly() || sequenceAnomaly;
+        //if (materialPlaced && jobStarted && waferStarted && waferCompleted && !jobCompleted) return waferRuntimeAnomaly > 0;
+        //if (materialPlaced && jobStarted && jobCompleted) return jobRuntimeAnomaly > 0;
+        if (materialRemoved) {
+            return isSequenceAnomaly() || jobRuntimeAnomaly > 0 || waferRuntimeAnomaly > 0;
+        }
         return false;
     }
 
@@ -119,16 +104,30 @@ public class JobSequenceInfo {
         }
     }
 
+    public boolean isJobStarted() {
+        return jobStarted;
+    }
+
+    public boolean isJobCompleted() {
+        return jobCompleted;
+    }
+
+    public ArrayList<EquipmentEvent> getEvents() {
+        return events;
+    }
+
+    public String getJobRef() {
+        return jobRef;
+    }
+
     @Override
     public String toString() {
         return "{" +
-                "jobReference:'" + jobReference + '\'' +
+                "jobReference:'" + jobRef + '\'' +
                 ", equipment:'" + equipment + '\'' +
                 ", insertTime:" + new Date() +
                 ", jobRuntimeAnomaly:" + jobRuntimeAnomaly +
                 ", waferRuntimeAnomaly:" + waferRuntimeAnomaly +
-                ", eventDeletion:" + eventDeletion +
-                ", eventDuplication:" + eventDuplication +
                 '}';
     }
 }

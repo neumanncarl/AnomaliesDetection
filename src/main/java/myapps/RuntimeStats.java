@@ -16,18 +16,21 @@ public class RuntimeStats {
 
     // Check if a value is within 3 standard deviations of the mean
     public boolean isWithinBounds(long value) {
-        System.out.println("count " + count);
         if (count < 2) {
             // Not enough data to determine bounds
             return false;
         }
         double stdDev = Math.sqrt(variance / (count - 1));
-        System.out.println("stdDev " + stdDev);
+        // System.out.println("stdDev " + stdDev);
         double lowerBound = mean - 3 * stdDev;
         double upperBound = mean + 3 * stdDev;
 
-        System.out.println("value " + value);
-        System.out.println("lowerBound " + lowerBound + " upperBound " + upperBound);
+//        if (lowerBound > value || upperBound < value) {
+//            System.out.println(value);
+//            System.out.println(mean);
+//            System.out.println(stdDev);
+//            System.out.println(lowerBound + " " + upperBound);
+//        }
         return !(value >= lowerBound) || !(value <= upperBound);
     }
 
