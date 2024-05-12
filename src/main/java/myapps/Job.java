@@ -10,7 +10,7 @@ public class Job {
     private final ArrayList<EquipmentEvent> events = new ArrayList();
     private final String equipment;
     private final String equipmentType;
-    private final String jobRef;
+    private final long jobRef;
 
     // Job status
     private boolean jobStarted = false;
@@ -19,8 +19,8 @@ public class Job {
     private boolean jobCompleted = false;
     private boolean materialRemoved = false;
 
-    private LocalDateTime jobStart;
-    private ArrayList<LocalDateTime> waferStarts = new ArrayList<>();
+    private Date jobStart;
+    private ArrayList<Date> waferStarts = new ArrayList<>();
 
     private final Map<String, Integer> eventTypeCounts = new HashMap<>();
 
@@ -52,7 +52,7 @@ public class Job {
                 if (waferStarts.isEmpty()) {
                     break;
                 }
-                runtime = ChronoUnit.SECONDS.between(waferStarts.getFirst(), event.getTimestamp());
+                runtime = ChronoUnit.SECONDS.between(waferStarts.getFirst().toInstant(), event.getTimestamp().toInstant());
                 waferStarts.removeFirst();
                 runtimeStats.update(runtime);
                 runtimeStatsStore.put(statsKey, runtimeStats);
@@ -66,7 +66,7 @@ public class Job {
                 break;
             case "JobCompleted":
                 jobCompleted = true;
-                runtime = ChronoUnit.SECONDS.between(jobStart, event.getTimestamp());
+                runtime = ChronoUnit.SECONDS.between(jobStart.toInstant(), event.getTimestamp().toInstant());
                 runtimeStats.update(runtime);
                 runtimeStatsStore.put(statsKey, runtimeStats);
                 if (runtimeStats.isWithinBounds(runtime)) {
@@ -116,7 +116,7 @@ public class Job {
         return events;
     }
 
-    public String getJobRef() {
+    public long getJobRef() {
         return jobRef;
     }
 

@@ -5,14 +5,13 @@ import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.processor.ProcessorContext;
 
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 
 import static myapps.AnomaliesDetection.parseLogMessage;
-import static myapps.AnomaliesDetection.parseToEquipment;
+//import static myapps.AnomaliesDetection.parseToEquipment;
 
-public class AnomalyDetectionTransformer implements Transformer<String, String, KeyValue<String, Job>> {
+public class AnomalyDetectionTransformer implements Transformer<String, String, KeyValue<Long, Job>> {
     private final Map<String, RuntimeStats> statsStore = new HashMap<>();
     private final Map<String, Job> jobStore = new HashMap<>();
 
@@ -24,7 +23,7 @@ public class AnomalyDetectionTransformer implements Transformer<String, String, 
     }
 
     @Override
-    public KeyValue<String, Job> transform(String key, String value) {
+    public KeyValue<Long, Job> transform(String key, String value) {
        // if (startT == null) startT = java.time.LocalDateTime.now();
         EquipmentEvent event = deserializeEvent(value);
 
@@ -68,7 +67,7 @@ public class AnomalyDetectionTransformer implements Transformer<String, String, 
     }
 
     private EquipmentEvent deserializeEvent(String value) {
-       return parseToEquipment(parseLogMessage(value));
+       return parseLogMessage(value);
     }
 }
 

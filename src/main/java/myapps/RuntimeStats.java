@@ -4,6 +4,7 @@ public class RuntimeStats {
     private double mean = 0.0;
     private double variance = 0.0;
     private long count = 0;
+    private long standardDeviation = 0;
 
     // Update statistics with a new observation
     public void update(long newValue) {
