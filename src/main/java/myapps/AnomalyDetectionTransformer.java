@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-import static myapps.AnomaliesDetection.parseLogMessage;
+import static myapps.EventTriggeredWindowProcessor.parseLogMessage;
 //import static myapps.AnomaliesDetection.parseToEquipment;
 
 public class AnomalyDetectionTransformer implements Transformer<String, String, KeyValue<Long, Job>> {

@@ -5,14 +5,11 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.ProcessorContext;
-import org.apache.kafka.streams.processor.To;
-import org.apache.kafka.streams.state.KeyValueStore;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static java.lang.Math.abs;
 
@@ -21,8 +18,6 @@ public class EventTriggeredWindowProcessor extends AbstractProcessor<String, Str
             .registerModule(new JavaTimeModule())
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
-    private KeyValueStore<String, List<EquipmentEvent>> eventStore;
-//    private KeyValueStore<String, RuntimeStats> statsStore;
     private Map<String, RuntimeStats> statsStore;
     private Map<String, List<EquipmentEvent>> eventMap;
     private Instant startT = Instant.now();
@@ -31,8 +26,6 @@ public class EventTriggeredWindowProcessor extends AbstractProcessor<String, Str
     @Override
     public void init(ProcessorContext context) {
         super.init(context);
-        eventStore = context.getStateStore("event-store");
-//        statsStore = context.getStateStore("stats-store");
         statsStore = new HashMap<>();
         eventMap = new HashMap<>();
         startT = Instant.now();
@@ -129,38 +122,33 @@ public class EventTriggeredWindowProcessor extends AbstractProcessor<String, Str
 
     private int eventDeletion(List<EquipmentEvent> events) {
         // Maps to count occurrences of each event type
-        Map<String, Long> eventTypeCounts = events.stream()
-                .collect(Collectors.groupingBy(EquipmentEvent::getEiEventType, Collectors.counting()));
-        System.out.println("deleteion");
-        System.out.println(eventTypeCounts.values());
-
-        boolean materialPlaced = false;
-        boolean jobStarted = false;
+        int materialPlaced = 0;
+        int jobStarted = 0;
         int waferStarted = 0;
         int waferCompleted = 0;
-        boolean jobCompleted = false;
-        boolean materialRemoved = false;
+        int jobCompleted = 0;
+        int materialRemoved = 0;
 
         for (EquipmentEvent event : events) {
             switch (event.getEiEventType()) {
-                case "MaterialPlaced": materialPlaced = true; break;
-                case "JobStarted": jobStarted = true; break;
+                case "MaterialPlaced": materialPlaced++; break;
+                case "JobStarted": jobStarted++; break;
                 case "WaferStarted": waferStarted++; break;
                 case "WaferCompleted": waferCompleted++; break;
-                case "JobCompleted": jobCompleted = true; break;
-                case "MaterialRemoved": materialRemoved = true; break;
+                case "JobCompleted": jobCompleted++; break;
+                case "MaterialRemoved": materialRemoved++; break;
             }
         }
 
         int deletions = 0;
 
-        if (!materialPlaced) deletions++;
-        if (!jobStarted) deletions++;
-        if (!jobCompleted) deletions++;
-        if (!materialRemoved) deletions++;
+        if (materialPlaced == 0 || materialPlaced > 1) deletions++;
+        if (jobStarted == 0 || jobStarted > 1) deletions++;
+        if (jobCompleted == 0 || jobCompleted > 1) deletions++;
+        if (materialRemoved == 0 || materialRemoved > 1) deletions++;
 
         if (!events.getFirst().getEquipmentType().equals("CascadingWafer")) {
-            return  deletions;
+            return deletions;
         } else {
             deletions += abs(waferCompleted - waferStarted);
             return deletions;
@@ -173,9 +161,7 @@ public class EventTriggeredWindowProcessor extends AbstractProcessor<String, Str
         Date latestTime = null;
         String latestEventType = "";
         for (EquipmentEvent event : events) {
-            if (latestTime != null) {
-                if (event.getTimestamp().equals(latestTime) && event.getEiEventType().equals(latestEventType)) duplicates++;
-            }
+            if (event.getTimestamp().equals(latestTime) && event.getEiEventType().equals(latestEventType)) duplicates++;
             latestTime = event.getTimestamp();
             latestEventType = event.getEiEventType();
         }
