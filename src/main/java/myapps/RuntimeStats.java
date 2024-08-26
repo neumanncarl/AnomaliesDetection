@@ -4,7 +4,7 @@ public class RuntimeStats {
     private double mean = 0.0;
     private double variance = 0.0;
     private long count = 0;
-    private long standardDeviation = 0;
+//    private long standardDeviation = 0;
 
     // Update statistics with a new observation
     public void update(long newValue) {
@@ -35,21 +35,21 @@ public class RuntimeStats {
         return !(value >= lowerBound) || !(value <= upperBound);
     }
 
-    // Getters and Setters
-    public double getMean() {
-        return mean;
-    }
-
-    public double getVariance() {
-        return variance;
-    }
-
-    public double getStandardDeviation() {
-        if (count < 2) return 0.0;
-        return Math.sqrt(variance / (count - 1));
-    }
-
-    public long getCount() {
-        return count;
-    }
+//    // Getters and Setters
+//    public double getMean() {
+//        return mean;
+//    }
+//
+//    public double getVariance() {
+//        return variance;
+//    }
+//
+//    public double getStandardDeviation() {
+//        if (count < 2) return 0.0;
+//        return Math.sqrt(variance / (count - 1));
+//    }
+//
+//    public long getCount() {
+//        return count;
+//    }
 }

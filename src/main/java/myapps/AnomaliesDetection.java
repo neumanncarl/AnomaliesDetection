@@ -43,16 +43,16 @@ public class AnomaliesDetection {
 
         // Config
         Properties props = new Properties();
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "anomaly-detection-application120");
+        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "application");
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
         props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
         props.put("auto.offset.reset", "earliest"); // for testing purposes only
 
         final Topology topology = new Topology();
-        topology.addSource("small-topic", "hugehuge");
+        topology.addSource("small-topic", "all");
         topology.addProcessor("anomaly-processor",() -> new EventTriggeredWindowProcessor(),  "small-topic");
-        topology.addSink("Sink1","all-dump-out1", Serdes.String().serializer(), new JobRecordSerde().serializer(), "anomaly-processor");
+        topology.addSink("Sink1","huge-dump-out13", Serdes.String().serializer(), new JobRecordSerde().serializer(), "anomaly-processor");
         try (KafkaStreams streams = new KafkaStreams(topology, props)) {
             streams.setStateListener((newState, oldState) -> {
                 System.out.println("State changed from " + oldState + " to " + newState);

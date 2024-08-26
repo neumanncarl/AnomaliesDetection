@@ -49,6 +49,7 @@ public class EventTriggeredWindowProcessor extends AbstractProcessor<String, Str
         if (event.getEiEventType().equals("MaterialRemoved")) {
             // Trigger condition met, process the aggregated events
             JobRecord jobRecord = checkForAnomalies(events);
+            if (jobRecord.getJobReference() == 37995) System.out.println(jobRecord);
             context.forward(key, jobRecord);
 
             // Optionally, clear the events list after processing
@@ -142,11 +143,27 @@ public class EventTriggeredWindowProcessor extends AbstractProcessor<String, Str
 
         int deletions = 0;
 
-        if (materialPlaced == 0 || materialPlaced > 1) deletions++;
-        if (jobStarted == 0 || jobStarted > 1) deletions++;
-        if (jobCompleted == 0 || jobCompleted > 1) deletions++;
-        if (materialRemoved == 0 || materialRemoved > 1) deletions++;
+        if (materialPlaced == 0) deletions++;
+        //if (jobStarted == 0 || jobStarted > 1) deletions++;
+        //if (jobCompleted == 0 || jobCompleted > 1) deletions++;
+        if (materialRemoved == 0) deletions++;
 
+//        if (!events.getFirst().getEquipmentType().equals("CascadingWafer")) {
+//            if (jobStarted > 0 || jobCompleted > 0) {
+//                if (jobStarted > 1) deletions++;
+//                if (jobCompleted > 1) deletions++;
+//            }
+//        }
+//        if (deletions > 0) System.out.println(events);
+        if (events.getFirst().getJobReference() == 37160) {
+            for (EquipmentEvent event : events) {
+                System.out.println(event);
+                System.out.println(deletions);
+                System.out.println(materialPlaced);
+                System.out.println(materialRemoved);
+
+            }
+        }
         if (!events.getFirst().getEquipmentType().equals("CascadingWafer")) {
             return deletions;
         } else {
