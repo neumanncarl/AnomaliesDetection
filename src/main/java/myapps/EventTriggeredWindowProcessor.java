@@ -34,6 +34,7 @@ public class EventTriggeredWindowProcessor extends AbstractProcessor<String, Str
     @Override
     public void process(String key, String eventString) {
         EquipmentEvent event = parseLogMessage(eventString);
+        if (event.getId().equals("1")) startT = Instant.now();
         if (event.getId().equals("1000000")) System.out.println("Time: " + Duration.between(startT, Instant.now()));
         // Check if the store has the key
         List<EquipmentEvent> events = eventMap.get(event.getEquipment());
